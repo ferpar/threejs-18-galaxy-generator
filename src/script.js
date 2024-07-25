@@ -20,17 +20,28 @@ const scene = new THREE.Scene();
 
 // Parameters
 const parameters = {
-  count: 1000,
+  count: 10000,
   size: 0.02,
   radius: 5,
   branches: 3,
+  spin: 1,
+  randomnessPower: 5,
+  insideColor: "#ff6030",
+  outsideColor: "#1b3984",
 };
 
-let geometry = null
-let material = null
-let points = null
+let geometry = null;
+let material = null;
+let points = null;
 
-const generateGalaxy = ({ count, size, radius, branches }) => {
+const generateGalaxy = ({
+  count,
+  size,
+  radius,
+  branches,
+  spin,
+  randomnessPower,
+}) => {
   if (points !== null) {
     geometry.dispose();
     material.dispose();
@@ -39,36 +50,98 @@ const generateGalaxy = ({ count, size, radius, branches }) => {
   // Geometry
   geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
+  const colorInside = new THREE.Color(parameters.insideColor);
+  const colorOutside = new THREE.Color(parameters.outsideColor);
 
   for (let i = 0; i < count; i++) {
     const i3 = i * 3;
 
-    const pointRadius = Math.random() * radius
-    const branchAngle = (i % branches) / branches * Math.PI * 2
+    // Position
+    const pointRadius = Math.random() * radius;
+    const spinAngle = pointRadius * spin;
+    const branchAngle = ((i % branches) / branches) * Math.PI * 2;
+    const pointAngle = branchAngle + spinAngle;
 
-    positions[i3] = Math.sin(branchAngle) * pointRadius;
-    positions[i3 + 1] = 0;
-    positions[i3 + 2] = pointRadius * Math.cos(branchAngle);
+    const randomX =
+      Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
+    const randomY =
+      Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
+    const randomZ =
+      Math.pow(Math.random(), randomnessPower) * (Math.random() < 0.5 ? 1 : -1);
+
+    positions[i3] = Math.sin(pointAngle) * pointRadius + randomX;
+    positions[i3 + 1] = 0 + randomY;
+    positions[i3 + 2] = pointRadius * Math.cos(pointAngle) + randomZ;
+
+    // Color
+    const mixedColor = colorInside.clone();
+    mixedColor.lerp(colorOutside, pointRadius / radius);
+    colors[i3] = mixedColor.r;
+    colors[i3 + 1] = mixedColor.g;
+    colors[i3 + 2] = mixedColor.b;
   }
 
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
   // Material
   material = new THREE.PointsMaterial({
     size: size,
     sizeAttenuation: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
+    vertexColors: true,
   });
   // Points
   points = new THREE.Points(geometry, material);
-  scene.add(points)
+  scene.add(points);
 };
 generateGalaxy(parameters);
 
-gui.add(parameters, 'count').min(100).max(100000).step(100).onFinishChange(() => generateGalaxy(parameters))
-gui.add(parameters, 'size').min(0.001).max(0.1).step(0.001).onFinishChange(() => generateGalaxy(parameters))
-gui.add(parameters, 'radius').min(0.1).max(20).step(0.01).onFinishChange(() => generateGalaxy(parameters))
-gui.add(parameters, 'branches').min(2).max(20).step(1).onFinishChange(() => generateGalaxy(parameters))
+gui
+  .add(parameters, "count")
+  .min(100)
+  .max(100000)
+  .step(100)
+  .onFinishChange(() => generateGalaxy(parameters));
+gui
+  .add(parameters, "size")
+  .min(0.001)
+  .max(0.1)
+  .step(0.001)
+  .onFinishChange(() => generateGalaxy(parameters));
+gui
+  .add(parameters, "radius")
+  .min(0.1)
+  .max(20)
+  .step(0.01)
+  .onFinishChange(() => generateGalaxy(parameters));
+gui
+  .add(parameters, "branches")
+  .min(2)
+  .max(20)
+  .step(1)
+  .onFinishChange(() => generateGalaxy(parameters));
+gui
+  .add(parameters, "spin")
+  .min(-5)
+  .max(5)
+  .step(0.001)
+  .onChange(() => generateGalaxy(parameters));
+gui
+  .add(parameters, "randomnessPower")
+  .min(1)
+  .max(10)
+  .step(0.001)
+  .onChange(() => generateGalaxy(parameters));
+gui.addColor(parameters, "insideColor").onFinishChange(() => {
+  generateGalaxy(parameters);
+});
+gui.addColor(parameters, "outsideColor").onFinishChange(() => {
+  generateGalaxy(parameters);
+});
 /**
  * Sizes
  */
